@@ -1,4 +1,4 @@
-package pkg
+package chip8
 
 type Chip8 struct {
 	Screen [64 * 32]uint8

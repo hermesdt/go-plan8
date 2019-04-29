@@ -1,4 +1,4 @@
-package pkg
+package chip8
 
 import (
 	"fmt"
@@ -183,25 +183,56 @@ func (o *Opcode) AddVY() {
 	o.Chip8.PC += 2
 }
 func (o *Opcode) SubVY() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	y := (o.Value & 0x00F0) >> 4
+	o.Chip8.V[0xF] = 0x0
+	hasCarray := o.Chip8.V[x] < o.Chip8.V[y]
+	if hasCarray {
+		o.Chip8.V[0xF] = 0x1
+	}
+	o.Chip8.V[x] -= o.Chip8.V[y]
+	o.Chip8.PC += 2
 }
 func (o *Opcode) ShiftRight() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	o.Chip8.V[0xF] = o.Chip8.V[x] & 0x01
+	o.Chip8.V[x] >>= 1
+	o.Chip8.PC += 2
 }
 func (o *Opcode) VYSub() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	y := (o.Value & 0x00F0) >> 4
+	o.Chip8.V[0xF] = 0x0
+	hasCarray := o.Chip8.V[x] > o.Chip8.V[y]
+	if hasCarray {
+		o.Chip8.V[0xF] = 0x1
+	}
+	o.Chip8.V[x] = o.Chip8.V[y] - o.Chip8.V[x]
+	o.Chip8.PC += 2
 }
 func (o *Opcode) ShiftLeft() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	o.Chip8.V[0xF] = o.Chip8.V[x] & 0x80
+	o.Chip8.V[x] <<= 1
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SkipNeqVY() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	y := (o.Value & 0x00F0) >> 4
+	if o.Chip8.V[x] != o.Chip8.V[y] {
+		o.Chip8.PC += 4
+		return
+	}
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SetI() {
-	panic("not implemented yet")
+	address := o.Value & 0x0FFF
+	o.Chip8.I = address
+	o.Chip8.PC += 2
 }
 func (o *Opcode) JumpPlusV0() {
-	panic("not implemented yet")
+	n := o.Value & 0x0FFF
+	o.Chip8.PC = uint16(o.Chip8.V[0x0]) + n
 }
 func (o *Opcode) SetRandomMask() {
 	panic("not implemented yet")

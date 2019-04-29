@@ -1,4 +1,4 @@
-package pkg
+package chip8
 
 func (c *Chip8) LoadFontSet() {
 	fontSet := [80]uint8{
