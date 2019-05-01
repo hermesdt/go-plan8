@@ -2,11 +2,23 @@ package chip8
 
 import (
 	"fmt"
+	"math/rand"
 )
 
+type RandomNumber func() uint8
+
 type Opcode struct {
-	Value uint16
-	Chip8 *Chip8
+	Value        uint16
+	Chip8        *Chip8
+	RandomNumber RandomNumber
+}
+
+func (o Opcode) randomNumber() uint8 {
+	if o.RandomNumber != nil {
+		return o.RandomNumber()
+	}
+
+	return uint8(rand.Int31n(256))
 }
 
 func (o *Opcode) execute() {
@@ -235,10 +247,40 @@ func (o *Opcode) JumpPlusV0() {
 	o.Chip8.PC = uint16(o.Chip8.V[0x0]) + n
 }
 func (o *Opcode) SetRandomMask() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	n := o.Value & 0x00FF
+	o.Chip8.V[x] = o.RandomNumber() & uint8(n)
+	o.Chip8.PC += 2
 }
 func (o *Opcode) Draw() {
-	panic("not implemented yet")
+	x := int(o.Chip8.V[(o.Value&0x0F00)>>8])
+	y := int(o.Chip8.V[(o.Value&0x00F0)>>4])
+	n := int(o.Value & 0x000F)
+	o.Chip8.V[0xF] = 0
+
+	for row := y; row < y+n; row++ {
+		newWord := o.Chip8.Memory[int(o.Chip8.I)+row-y]
+
+		for col := 0; col < 8; col++ {
+			offset := (x + col) % 64
+			numWord := int(offset / 8)
+			wordStartIdx := numWord * 8
+			word := o.Chip8.Screen[row*8+numWord]
+
+			var wordPosition = uint8(offset) - uint8(wordStartIdx)
+			var newWordPoisition = uint8(col)
+
+			var newBit = (newWord & (0x80 >> newWordPoisition)) >> (7 - newWordPoisition)
+			var oldBit = (word & (0x80 >> wordPosition)) >> (7 - wordPosition)
+			var newValue uint8 = newBit ^ oldBit
+			// if newValue == 1 {
+			// 	o.Chip8.V[0xF] = 1
+			// }
+
+			o.Chip8.Screen[row*8+numWord] = (word & uint8(^(newValue << (7 - wordPosition)))) | newValue<<(7-wordPosition)
+		}
+	}
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SkipKeyPressed() {
 	panic("not implemented yet")
