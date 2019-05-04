@@ -7,21 +7,32 @@ import (
 
 type RandomNumber func() uint8
 
+// type ReadKey func()
+
 type Opcode struct {
-	Value        uint16
-	Chip8        *Chip8
-	RandomNumber RandomNumber
+	Value          uint16
+	Chip8          *Chip8
+	RandomNumberFn RandomNumber
+	// ReadKey      ReadKey
 }
 
-func (o Opcode) randomNumber() uint8 {
-	if o.RandomNumber != nil {
-		return o.RandomNumber()
+func (o Opcode) RandomNumber() uint8 {
+	if o.RandomNumberFn != nil {
+		return o.RandomNumberFn()
 	}
 
 	return uint8(rand.Int31n(256))
 }
 
-func (o *Opcode) execute() {
+// func (o Opcode) readKey() uint8 {
+// 	if o.ReadKey != nil {
+// 		return o.ReadKey()
+// 	}
+
+// 	return uint8(rand.Int31n(256))
+// }
+
+func (o *Opcode) Execute() {
 	switch {
 	case o.Value == 0x00E0:
 		o.DispClr()
@@ -99,7 +110,7 @@ func (o *Opcode) execute() {
 }
 
 func (o *Opcode) Call() {
-	panic("not implemented yet")
+	panic(fmt.Sprintf("Call: not implemented yet, code %v", o.Value))
 }
 func (o *Opcode) DispClr() {
 	for i := range o.Chip8.Screen {
@@ -273,45 +284,84 @@ func (o *Opcode) Draw() {
 			var newBit = (newWord & (0x80 >> newWordPoisition)) >> (7 - newWordPoisition)
 			var oldBit = (word & (0x80 >> wordPosition)) >> (7 - wordPosition)
 			var newValue uint8 = newBit ^ oldBit
-			// if newValue == 1 {
-			// 	o.Chip8.V[0xF] = 1
-			// }
-
-			o.Chip8.Screen[row*8+numWord] = (word & uint8(^(newValue << (7 - wordPosition)))) | newValue<<(7-wordPosition)
+			if newValue == 0 && oldBit == 1 {
+				o.Chip8.V[0xF] = 1
+			}
+			if newValue == 1 {
+				o.Chip8.Screen[row*8+numWord] = (word & uint8(^(newValue << (7 - wordPosition)))) | newValue<<(7-wordPosition)
+			} else {
+				o.Chip8.Screen[row*8+numWord] = (word & uint8(^(1 << (7 - wordPosition))))
+			}
 		}
 	}
 	o.Chip8.PC += 2
 }
 func (o *Opcode) SkipKeyPressed() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	if o.Chip8.Key[o.Chip8.V[x]] == 1 {
+		o.Chip8.PC += 4
+		return
+	}
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SkipNotKeyPressed() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	if o.Chip8.Key[o.Chip8.V[x]] == 0 {
+		o.Chip8.PC += 4
+		return
+	}
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SetFromDelay() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	o.Chip8.V[x] = o.Chip8.DelayTimer
+	o.Chip8.PC += 2
 }
 func (o *Opcode) ReadKey() {
-	panic("not implemented yet")
+	panic(fmt.Sprintf("ReadKey: not implemented yet, code %v", o.Value))
 }
 func (o *Opcode) SetDelay() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	o.Chip8.DelayTimer = o.Chip8.V[x]
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SetSound() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	o.Chip8.SoundTimer = o.Chip8.V[x]
+	o.Chip8.PC += 2
 }
 func (o *Opcode) AddI() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	o.Chip8.I += uint16(o.Chip8.V[x])
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SetISprite() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	char := o.Chip8.V[x]
+	o.Chip8.I = uint16(0x50 + char*5)
+	o.Chip8.PC += 2
 }
 func (o *Opcode) SetBCD() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	v := o.Chip8.V[x]
+	o.Chip8.Memory[o.Chip8.I+0] = v / 100
+	o.Chip8.Memory[o.Chip8.I+1] = (v / 10) % 10
+	o.Chip8.Memory[o.Chip8.I+2] = v % 10
+	o.Chip8.PC += 2
 }
 func (o *Opcode) RegDump() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	var i uint16 = 0
+	for ; i <= x; i++ {
+		o.Chip8.Memory[o.Chip8.I+i] = o.Chip8.V[i]
+	}
+	o.Chip8.PC += 2
 }
 func (o *Opcode) RegLoad() {
-	panic("not implemented yet")
+	x := (o.Value & 0x0F00) >> 8
+	var i uint16 = 0
+	for ; i <= x; i++ {
+		o.Chip8.V[i] = o.Chip8.Memory[o.Chip8.I+i]
+	}
+	o.Chip8.PC += 2
 }
