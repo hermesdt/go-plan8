@@ -8,9 +8,11 @@ import (
 )
 
 func TestDispClr(t *testing.T) {
-	screen := [2048]uint8{}
+	screen := Screen{
+		px: [2048]bool{},
+	}
 	for i := 0; i < 3; i++ {
-		screen[i*10] = 1
+		screen.Set(i*10, 0, true)
 	}
 	o := Opcode{
 		Value: 0x00E0,
@@ -21,9 +23,9 @@ func TestDispClr(t *testing.T) {
 
 	o.Execute()
 
-	assert.Equal(t, o.Chip8.Screen[0], uint8(0x0))
-	assert.Equal(t, o.Chip8.Screen[10], uint8(0x0))
-	assert.Equal(t, o.Chip8.Screen[20], uint8(0x0))
+	assert.Equal(t, o.Chip8.Screen.Get(0, 0), false)
+	assert.Equal(t, o.Chip8.Screen.Get(0, 10), false)
+	assert.Equal(t, o.Chip8.Screen.Get(0, 20), false)
 }
 
 func TestReturn(t *testing.T) {
@@ -575,7 +577,7 @@ func TestJumpPlusV0(t *testing.T) {
 
 	o.Execute()
 
-	assert.Equal(t, o.Chip8.PC, uint16(0x0F62))
+	assert.Equal(t, o.Chip8.PC, uint16(0x0022))
 }
 
 func TestSetRandomMask(t *testing.T) {
@@ -605,7 +607,7 @@ func TestDraw_nocollision(t *testing.T) {
 	v[1] = uint8(3)
 	var pc uint16 = 0x0010
 	var i uint16 = 0x500
-	var screen [64 * 32]uint8
+	var screen Screen
 
 	var memory [4096]uint8
 	memory[i+0] = 0xFF
@@ -626,7 +628,7 @@ func TestDraw_nocollision(t *testing.T) {
 
 	o.Execute()
 
-	assert.Equal(t, o.Chip8.Draw(), ""+
+	assert.Equal(t, o.Chip8.Screen.Render(), ""+
 		"0000000000000000000000000000000000000000000000000000000000000000\n"+
 		"0000000000000000000000000000000000000000000000000000000000000000\n"+
 		"0000000000000000000000000000000000000000000000000000000000000000\n"+
@@ -670,11 +672,11 @@ func TestDraw_collision(t *testing.T) {
 	v[1] = uint8(3)
 	var pc uint16 = 0x0010
 	var i uint16 = 0x500
-	var screen [64 * 32]uint8
-	screen[1+0*8] = 0xFF
-	screen[1+1*8] = 0xC3
-	screen[1+2*8] = 0xC3
-	screen[1+3*8] = 0xFF
+	var screen Screen
+	screen.DrawByte(0, 8, 0xFF)
+	screen.DrawByte(1, 8, 0xC3)
+	screen.DrawByte(2, 8, 0xC3)
+	screen.DrawByte(3, 8, 0xFF)
 
 	var memory [4096]uint8
 	memory[i+0] = 0xFF
@@ -694,9 +696,9 @@ func TestDraw_collision(t *testing.T) {
 	}
 
 	o.Execute()
-	fmt.Println(o.Chip8.Draw())
+	fmt.Println(o.Chip8.Screen.Render())
 
-	assert.Equal(t, o.Chip8.Draw(), ""+
+	assert.Equal(t, o.Chip8.Screen.Render(), ""+
 		"0000000011111111000000000000000000000000000000000000000000000000\n"+
 		"0000000011000011000000000000000000000000000000000000000000000000\n"+
 		"0000000011000011000000000000000000000000000000000000000000000000\n"+

@@ -113,9 +113,7 @@ func (o *Opcode) Call() {
 	panic(fmt.Sprintf("Call: not implemented yet, code %v", o.Value))
 }
 func (o *Opcode) DispClr() {
-	for i := range o.Chip8.Screen {
-		o.Chip8.Screen[i] = 0
-	}
+	o.Chip8.Screen.Clear()
 	o.Chip8.PC += 2
 }
 func (o *Opcode) Return() {
@@ -268,33 +266,16 @@ func (o *Opcode) Draw() {
 	y := int(o.Chip8.V[(o.Value&0x00F0)>>4])
 	n := int(o.Value & 0x000F)
 	o.Chip8.V[0xF] = 0
+	collision := false
 
 	for row := y; row < y+n; row++ {
-		newWord := o.Chip8.Memory[int(o.Chip8.I)+row-y]
-
-		for col := 0; col < 8; col++ {
-			offset := (x + col) % 64
-			numWord := int(offset / 8)
-			wordStartIdx := numWord * 8
-			word := o.Chip8.Screen[row*8+numWord]
-
-			var wordPosition = uint8(offset) - uint8(wordStartIdx)
-			var newWordPoisition = uint8(col)
-
-			var newBit = (newWord & (0x80 >> newWordPoisition)) >> (7 - newWordPoisition)
-			var oldBit = (word & (0x80 >> wordPosition)) >> (7 - wordPosition)
-			var newValue uint8 = newBit ^ oldBit
-			if newValue == 0 && oldBit == 1 {
-				o.Chip8.V[0xF] = 1
-			}
-			if newValue == 1 {
-				o.Chip8.Screen[row*8+numWord] = (word & uint8(^(newValue << (7 - wordPosition)))) | newValue<<(7-wordPosition)
-			} else {
-				o.Chip8.Screen[row*8+numWord] = (word & uint8(^(1 << (7 - wordPosition))))
-			}
-		}
+		word := o.Chip8.Memory[int(o.Chip8.I)+row-y]
+		collision = o.Chip8.Screen.DrawByte(row, x, word) || collision
 	}
 	o.Chip8.PC += 2
+	if collision {
+		o.Chip8.V[0xf] = 1
+	}
 }
 func (o *Opcode) SkipKeyPressed() {
 	x := (o.Value & 0x0F00) >> 8
