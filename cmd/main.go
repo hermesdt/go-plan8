@@ -30,7 +30,7 @@ func main() {
 	for {
 		o := c.FetchOpcode()
 		o.Execute()
-		fmt.Println(c.Draw())
+		fmt.Println(c.Screen.Render())
 		// time.Sleep(10 * time.Millisecond)
 	}
 }
